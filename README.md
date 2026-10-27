@@ -71,20 +71,21 @@ dependency_overrides:
 
 ## Development
 
-The Flutter version is pinned in [`.fvmrc`](.fvmrc), and CI reads its version from the same
-file. Use [fvm](https://fvm.app), because `pubspec.lock` only reproduces on the Flutter that
-wrote it, and CI runs `pub get --enforce-lockfile`.
+CI is the gate: every pull request runs [`ci.yml`](.github/workflows/ci.yml) (lockfile
+enforced, analyze, every member's tests), and `main` only accepts changes that pass it. The
+same checks locally:
 
 ```bash
-fvm flutter pub get
-fvm flutter analyze --fatal-infos               # covers every member
+flutter pub get
+flutter analyze --fatal-infos                   # covers every member
 
-(cd packages/realm && fvm dart test)
-(cd packages/realm_firebase && fvm flutter test)  # Flutter package
-(cd examples/livekit-token-server && fvm dart test)
-
-git config core.hooksPath .githooks             # secret scan + analyzer before each commit
+(cd packages/realm && dart test)
+(cd packages/realm_firebase && flutter test)    # Flutter package
+(cd examples/livekit-token-server && dart test)
 ```
+
+`ci.yml` pins the Flutter version, and `pubspec.lock` only reproduces on the Flutter that wrote
+it, so regenerate the lockfile with that version.
 
 ## History
 

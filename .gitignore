@@ -5,12 +5,6 @@
 build/
 coverage/
 
-# FVM's SDK cache. The version pin itself (.fvmrc) IS committed: CI reads its
-# Flutter version from it, and pubspec.lock only reproduces on the Flutter that
-# wrote it (CI runs `pub get --enforce-lockfile`), so the pin travels with
-# every clone.
-.fvm/
-
 # IDEs / OS
 .idea/
 *.iml
