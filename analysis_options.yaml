@@ -1,0 +1,5 @@
+# The members carry no analysis_options.yaml of their own, so the analyzer
+# applies this one to all of them. Before the split they inherited
+# enspyrco/tech_world's root file, which included exactly this set; keeping it
+# identical means the move adds and removes no lint.
+include: package:flutter_lints/flutter.yaml

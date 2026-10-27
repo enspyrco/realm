@@ -1,0 +1,22 @@
+name: realm_workspace
+description: >-
+  Workspace root for the Realm engine and its first-party plugins. Nothing
+  depends on this package: it holds the shared resolution, the lockfile and
+  the lint set. See README.md.
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+# CI runs every member's tests by iterating THIS list (via `dart pub workspace
+# list`), not a directory glob, and fails if a declared member has no test/
+# directory. Adding a member here enrols it in CI; see .github/workflows/ci.yml.
+workspace:
+  - packages/realm
+  - packages/realm_firebase
+  - examples/livekit-token-server
+
+dev_dependencies:
+  # Provides the lint set in analysis_options.yaml. Same version the members
+  # resolved inside tech_world before the split.
+  flutter_lints: ^6.0.0

@@ -9,9 +9,9 @@ typedef EcKeyPair = ({ECPrivateKey privateKey, ECPublicKey publicKey});
 
 /// Generates an ephemeral ES256 (P-256) keypair in-process.
 ///
-/// Key material is created at test time and never touches disk or git — the
-/// gitleaks pre-commit gate blocks committed PEMs, so fixtures are generated,
-/// not stored. Each call yields an independent keypair, which is exactly what
+/// Key material is created at test time and never touches disk or git: a PEM
+/// committed to a public repo is a leaked key, so fixtures are generated, not
+/// stored. Each call yields an independent keypair, which is exactly what
 /// the "a foreign signature is rejected" test needs.
 EcKeyPair generateEs256KeyPair() {
   final seed = Uint8List.fromList(

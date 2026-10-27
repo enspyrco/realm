@@ -8,8 +8,13 @@ This document is the architectural pin. It must be cage-matched before any extra
 
 - Author: Claude + Nick (Imagineers)
 - Date: 2026-05-21
-- Will become: `packages/realm/README.md` once the engine is extracted and the package publishes.
+- Will become: the `realm` package README once the package publishes. Until then the repo's
+  root `README.md` is the front door and this note is the architectural pin.
 - Decision posture: provisional. Names, interface shapes, and scoping are open until the cage-match closes.
+- Paths: `packages/…` and `examples/…` are in this repo, `enspyrco/realm`. Everything else —
+  `lib/…`, `test/…`, `docs/…`, and app classes such as `RoomSession`, `AuthService`, `RoomData`
+  — belongs to [`enspyrco/tech_world`](https://github.com/enspyrco/tech_world), where this note
+  was written before the split and where the first World lives.
 
 ### Migration progress
 
@@ -29,9 +34,13 @@ This document is the architectural pin. It must be cage-matched before any extra
   `retrieveLiveKitToken` Cloud Function fallback was removed and the deployed functions retired
   (2026-10-25/27, zero production callers across the 30-day log window). Still on direct Firebase:
   `AuthService` callers, Firestore room reads, `firebase_storage` calls.
-- **Next structural move:** split `packages/realm*` out to `enspyrco/realm` (the Phase 2
-  repo structure below, brought forward), leaving `enspyrco/tech_world` as a World that
-  depends on it.
+- **Repo split (Phase 2 of "Repo structure", brought forward): done 2026-10-27.**
+  `packages/realm`, `packages/realm_firebase` and `examples/livekit-token-server` moved from
+  `enspyrco/tech_world` to this repo with their history (`git filter-repo`; all three subtree
+  hashes match tech_world at `a5ddafb`). tech_world consumes `realm` + `realm_firebase` as a
+  git dependency pinned to a full commit SHA — a tag or branch ref does not resolve (README,
+  "Using Realm from a World") — and is no longer a pub workspace. Steps 5–9 continue across
+  the two repos: an engine change is a PR here, then a pin bump in each World.
 
 ### Migration reality — what a code reconcile found the interfaces will meet (2026-07-26)
 
@@ -140,9 +149,11 @@ This section is architectural, not marketing. The license shapes what the engine
 
 The intersection of these three is the "commercial open source" playbook (GitLab, Sentry, Plausible, Mattermost, Grafana, Discourse). The license is open enough to drive adoption and federation; the business model captures value at the *operational* layer (hosting, enterprise features, marketplace), not the *code* layer.
 
-### License: AGPL v3
+### License: none yet, under legal review
 
-Realm engine, reference worlds (Tech World, repo-body, foyer), and reference provider implementations all ship under AGPL v3.
+**Status (2026-10-27): no LICENSE ships yet.** The plan has moved twice: AGPL v3 for everything (this section as first written), then AGPL v3 plus a linking exception so Worlds may carry any license (claude-tasks#1059, 2026-07-25). The legal read now examines **MPL-2.0 for the client packages** (`realm`, `realm_firebase`: changes to the engine's own files stay open, while Worlds and apps built on them may be closed) **with AGPL-3.0 for server components** (token servers, a future federation server), which is where AGPL's network clause applies. The rationale below, and the first of the "Three tensions" further down, argue the original AGPL case; they still explain why server components want that clause.
+
+The original plan: Realm engine, reference worlds (Tech World, repo-body, foyer), and reference provider implementations all ship under AGPL v3.
 
 Rationale:
 - **AGPL's network-use clause deters competitive cloud clones.** Anyone hosting modified Realm-as-a-service must release their changes. Handles the "Amazon problem" that drove MongoDB to SSPL — without resorting to source-available licenses that fracture community trust.
@@ -152,7 +163,7 @@ Rationale:
 
 ### Open-core split
 
-Free, AGPL-licensed:
+Free, open source (terms under review; see "License" above):
 - Realm engine (`packages/realm/`)
 - Reference World implementations: `TechWorld`, `RepoBodyWorld`, `FoyerWorld`
 - Reference provider implementations: Firebase-backed, GitHub OAuth, etc.
@@ -196,7 +207,7 @@ For Realm (the platform, operator-facing):
 ### Pre-revenue funding
 
 Operate from:
-- **Screen Australia Games Production Fund grant** (in flight, `docs/grant-application/`)
+- **Screen Australia Games Production Fund grant** (applied 2026; that process is over. Materials in tech_world's `docs/grant-application/`)
 - **Bootstrap** — Nick's existing runway
 - **GitHub Sponsors / Open Collective** (small but signals legitimacy)
 - **Pre-sales of enterprise tier** (deliver as we build) — when product-market fit becomes visible
@@ -923,7 +934,7 @@ But "not engine" doesn't always mean "World vocabulary" — there's a middle tie
 |---|---|---|---|
 | **Engine** | `packages/realm/` | `AuthProvider`, `RoomConfigStore`, `StorageProvider`, `LiveKitTokenEndpoint`, `PresenceService`, `World` interface | Interfaces, lifecycle, no implementations |
 | **Plugins** | `packages/realm_<name>/` | `realm_firebase` (provider impl), `realm_github_oauth` (provider impl), `realm_code_editor` (feature, aspirational), `realm_avatars` (feature, aspirational), `realm_tilemaps` (feature, aspirational) | Optional capabilities multiple Worlds might use; implement engine interfaces or extend engine primitives |
-| **Worlds** | `worlds/<name>/` | `tech_world`, `repo_body`, `foyer` | One specific World, declares its plugins + its own vocabulary |
+| **Worlds** | `worlds/<name>/`, or a World's own repo (Tech World: `enspyrco/tech_world`) | `tech_world`, `repo_body`, `foyer` | One specific World, declares its plugins + its own vocabulary |
 
 The test for "plugin vs World vocabulary" is one question: **would another World plausibly want this?**
 
@@ -985,9 +996,9 @@ tech_world/                       # workspace root (will rename to `realm/` at p
 
 Migration: the current `lib/` directory in tech_world repo splits three ways — substrate-shaped code → `packages/realm/`, provider implementations → `packages/realm_firebase/`, Tech-World-specific code → `worlds/tech_world/`. The top-level `lib/main.dart` becomes a small launcher that registers all available Worlds and lets the foyer load on app start.
 
-Phase 2 (when interfaces stabilize): rename repo to `enspyrco/realm`. The engine and plugins live at the top level. Worlds either stay in-repo as reference examples or get split to their own repos (Tech World → `enspyrco/tech_world`, repo-body → `enspyrco/repo_body`). External operators can pull `realm` + the plugins they want + whichever Worlds they want, mix and match.
+Phase 2 — **done 2026-10-27, brought forward** ahead of the interfaces stabilizing. Not the rename sketched here: the engine, its Firebase plugin and the token-server example moved to a new repo, `enspyrco/realm`, keeping their `packages/` and `examples/` paths under a root workspace, while Tech World stayed in `enspyrco/tech_world` with its own history and consumes the engine as a SHA-pinned git dependency. Where `FoyerWorld` and `RepoBodyWorld` start — `worlds/` here as reference examples, or repos of their own — is decided at steps 7–8. External operators can pull `realm` + the plugins they want + whichever Worlds they want, mix and match.
 
-The phase-1 monorepo lets us iterate the engine contract against three real Worlds + multiple provider plugins without cross-repo coordination overhead.
+The phase-1 monorepo let us iterate the engine contract against real Worlds + provider plugins without cross-repo coordination overhead. Bringing Phase 2 forward buys that overhead back: until the interfaces settle, a contract change is two PRs (one here, then a pin bump in each World), and a World sees no engine change until it bumps.
 
 ## The three reference worlds
 
@@ -1038,7 +1049,7 @@ A single mechanical refactor PR can't do this — too much surface. The path:
 3. **Engine interface PR** — *done, in review.* Define `AuthProvider`, `RoomConfigStore`, `StorageProvider`, `LiveKitTokenEndpoint`, `PresenceService` in `packages/realm/`, plus the `World` abstract interface class (and the `WorldTypeRegistry` + `StorageBackendRegistry` instance types the engine entry point threads through). No implementations yet. CI green. The `realm_lints` (Open Q #9) and `realm_test` conformance (Open Q #10) packages were deliberately **deferred to their own PR** — an analyzer plugin and a conformance harness each dominate review, and the design's compensating control (cage-match grep) already covers the interim. The `VectorPreview` rendering contract ships prose-grade until then. CI change landed with this step: root `flutter test` does **not** descend into workspace members (root `flutter analyze` does — both verified empirically under the pinned toolchain), so both workflows now iterate members.
 4. **Provider plugin PR**. Implement Firebase-backed versions in `packages/realm_firebase/`: `FirebaseAuthProvider`, `FirestoreRoomConfigStore`, `FirebaseStorageProvider`. Tech World still calls Firebase directly. Wire the **engine-package dependency whitelist** into CI: a `dart pub deps --json` check that fails the build if `packages/realm/`'s resolved transitive deps contain any signing/HMAC/crypto primitive (e.g. `crypto`, `cryptography`, `pointycastle`). This is the second structural artifact for the engine-vs-server-package boundary (paired with `examples/livekit-token-server/` from step 2) — the structural mechanism that prevents a future PR from re-adding `SignedRequest` or any other secret-bearing strategy to the engine package. CI green.
 5. **Consumer migration PRs** (one per consumer, parallel-safe). Move `AuthService` callers to `AuthProvider`. Move Firestore room reads to `RoomConfigStore`. Move `firebase_storage` calls to `StorageProvider`. Each PR is small, cage-matchable.
-6. **`TechWorld` wrap PR**. Refactor `TechWorld` → `class TechWorld extends flame.World with TapCallbacks implements World` (per the single-inheritance constraint — World is an interface, not a base class). `RoomSession` reads `worldType` from `RoomConfigStore`, dispatches via `WorldTypeRegistry`. Code moves from `lib/` to `worlds/tech_world/lib/`. CI green. **Behavior change is limited to native bundle paths**: iOS `cc.imagineering.techWorld` bundle ID and Firebase config tied to that ID are preserved; `pubspec.yaml` asset paths require adjustment; `lib/main.dart` stays as a thin shell at the workspace root that wires up worlds. The claim is NOT "zero behavior change for everything" — it's "zero gameplay behavior change for existing Tech World users, with documented native-bundle changes contained to a sub-step (6.5: bundle-path migration)".
+6. **`TechWorld` wrap PR**. Refactor `TechWorld` → `class TechWorld extends flame.World with TapCallbacks implements World` (per the single-inheritance constraint — World is an interface, not a base class). `RoomSession` reads `worldType` from `RoomConfigStore`, dispatches via `WorldTypeRegistry`. Code moves from `lib/` to `worlds/tech_world/lib/`. CI green. **Behavior change is limited to native bundle paths**: iOS `cc.imagineering.techWorld` bundle ID and Firebase config tied to that ID are preserved; `pubspec.yaml` asset paths require adjustment; `lib/main.dart` stays as a thin shell at the workspace root that wires up worlds. The claim is NOT "zero behavior change for everything" — it's "zero gameplay behavior change for existing Tech World users, with documented native-bundle changes contained to a sub-step (6.5: bundle-path migration)". **Since the repo split this step happens in `enspyrco/tech_world`, which is no longer a workspace.** Two things it must settle there, carried from tech_world's root `pubspec.yaml` comment that the split deleted: a `worlds/tech_world/` member named `tech_world` would collide with the root package's own name, so the root-vs-world naming is resolved in this PR; and with the engine now in its own repo, whether the code still needs to move under `worlds/` at all, or `lib/` stays put and simply `implements World`. If a member does appear, tech_world's CI needs a member-test loop again (fail-closed, as `ci.yml` here does it).
 7. **`FoyerWorld` + `PresenceService` impl PR**. Add `worlds/foyer/`. Implement `LiveKitPresenceService` (or initial Firestore-backed version). Make Foyer the default landing experience on app start. Existing rooms appear as windows in the foyer.
 8. **`RepoBodyWorld` stub PR**. Add `worlds/repo_body/` with placeholder body rendering. Create one Firestore room with `worldType: repo_body`. Verify it appears as a window in the foyer and the placeholder loads when entered.
 9. **`RepoBodyWorld` flesh PRs** (many, parallel-safe). `realm_github_oauth` plugin. GitHub repo fetch. Centrality analysis. Body renderer. Plaza layout. Heartbeat (CI). Circulation (commits). Wounds (issues). Time axis (history scrub). Each is its own design-pinned PR.
@@ -1065,7 +1076,7 @@ These are not blockers for the design note but must be answered before the corre
 - Replacing LiveKit. The engine assumes LiveKit. Pluggable transports are not a v1 goal.
 - Replacing Flame. Tech World uses Flame; future worlds may use it or not. The engine has no opinion.
 - Migrating Tech World off Firebase. Tech World keeps using Firebase via the new interfaces. The point is that *others can* swap, not that we do.
-- Publishing to pub.dev. The engine ships as path deps within the monorepo until interfaces stabilize.
+- Publishing to pub.dev. The engine ships as a git dependency pinned to a commit SHA until interfaces stabilize. Publishing would also need a new package name: `realm` on pub.dev is MongoDB's (see "Naming and prior art").
 - Cross-instance federation (rooms federated across separate Realm operators). The v1 engine *prepares for it* (see "Federation, deferred" below) but doesn't ship it.
 
 ## Federation, deferred
