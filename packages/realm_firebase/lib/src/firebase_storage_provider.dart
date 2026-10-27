@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:realm/realm.dart';
+import 'package:realm_core/realm_core.dart';
 
 /// Firebase Cloud Storage implementation of [StorageProvider].
 ///

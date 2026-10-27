@@ -70,6 +70,6 @@ jobs:
           # A failure inside the process substitution above cannot trip set -e;
           # it arrives here as zero iterations. Zero is the failure, not a pass.
           if [ "$tested" -eq 0 ]; then
-            echo "ERROR: no workspace member was tested — expected at least realm. Did 'dart pub workspace list' fail?" >&2
+            echo "ERROR: no workspace member was tested — expected at least realm_core. Did 'dart pub workspace list' fail?" >&2
             exit 1
           fi

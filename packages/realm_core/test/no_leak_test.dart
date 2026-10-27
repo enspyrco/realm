@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 
 /// The no-leak rule, enforced rather than asserted in prose.
 ///
-/// The engine's whole architecture rests on one claim: `packages/realm/` knows
+/// The engine's whole architecture rests on one claim: `packages/realm_core/` knows
 /// nothing about any backend, and nothing about Flutter. Every other promise —
 /// that an operator can swap Firebase out, that a world can be rendered by
 /// something other than Flame, that the engine could run in a text-mode bot —
@@ -69,7 +69,7 @@ void main() {
       expect(
         libDir.existsSync(),
         isTrue,
-        reason: 'Run this test from packages/realm/, where lib/ lives.',
+        reason: 'Run this test from packages/realm_core/, where lib/ lives.',
       );
       sources = libDir
           .listSync(recursive: true)
@@ -149,7 +149,7 @@ void main() {
       expect(
         hasRuntimeDeps,
         isFalse,
-        reason: 'packages/realm/pubspec.yaml declares a `dependencies:` '
+        reason: 'packages/realm_core/pubspec.yaml declares a `dependencies:` '
             'block. The engine ships interfaces only — it should need '
             'nothing at runtime. If a dependency is genuinely required, that '
             'is an architecture decision, not a routine addition: update '

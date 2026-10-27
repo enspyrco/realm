@@ -8,7 +8,7 @@ This document is the architectural pin. It must be cage-matched before any extra
 
 - Author: Claude + Nick (Imagineers)
 - Date: 2026-05-21
-- Will become: the `realm` package README once the package publishes. Until then the repo's
+- Will become: the `realm_core` package README once it publishes. Until then the repo's
   root `README.md` is the front door and this note is the architectural pin.
 - Decision posture: provisional. Names, interface shapes, and scoping are open until the cage-match closes.
 - Paths: `packages/…` and `examples/…` are in this repo, `enspyrco/realm`. Everything else —
@@ -41,6 +41,10 @@ This document is the architectural pin. It must be cage-matched before any extra
   git dependency pinned to a full commit SHA — a tag or branch ref does not resolve (README,
   "Using Realm from a World") — and is no longer a pub workspace. Steps 5–9 continue across
   the two repos: an engine change is a PR here, then a pin bump in each World.
+- **Engine package renamed `realm` → `realm_core`: 2026-10-28.** Per the package shape agreed
+  2026-08-20 (see "Package shape"): today's interfaces-only package is the *core*, and the name
+  `realm` is kept for the app-facing package that will re-export core plus the endorsed
+  implementations. Paths in the dated entries above (`packages/realm/…`) are as they were then.
 
 ### Migration reality — what a code reconcile found the interfaces will meet (2026-07-26)
 
@@ -164,7 +168,7 @@ Rationale:
 ### Open-core split
 
 Free, open source (terms under review; see "License" above):
-- Realm engine (`packages/realm/`)
+- Realm engine (`packages/realm_core/`, and the app-facing `realm` package once it exists)
 - Reference World implementations: `TechWorld`, `RepoBodyWorld`, `FoyerWorld`
 - Reference provider implementations: Firebase-backed, GitHub OAuth, etc.
 - Federation protocols and reference federation server
@@ -620,19 +624,19 @@ class BearerCredential implements TokenEndpointAuthStrategy {
 }
 ```
 
-**Server-side strategies live outside the engine package.** Round-2 attempted to keep `SignedRequest({required String secret})` in the engine with a "server-only" prose annotation, but round-3 cage-match noted that *the engine IS the client package* — any type declared in `packages/realm/` is shipped to every Flutter web/mobile/desktop client. A prose annotation is not enforcement. The chord move (unseal `TokenEndpointAuthStrategy`) makes this a *package* decision rather than a *prose* decision.
+**Server-side strategies live outside the engine package.** Round-2 attempted to keep `SignedRequest({required String secret})` in the engine with a "server-only" prose annotation, but round-3 cage-match noted that *the engine IS the client package* — any type declared in `packages/realm_core/` is shipped to every Flutter web/mobile/desktop client. A prose annotation is not enforcement. The chord move (unseal `TokenEndpointAuthStrategy`) makes this a *package* decision rather than a *prose* decision.
 
 **Two enforcement artifacts are required to make the package boundary structural rather than aspirational** (both are v1 BLOCKERS, named in Migration plan steps 2 and 4; the deps-whitelist mechanism is further specified in Open Question #2):
 
-1. **`examples/livekit-token-server/` is a workspace member with its own `pubspec.yaml`** that imports `packages/realm/` but is NOT imported by it. Migration step 2 (workspace scaffold) creates this directory as a real Dart package.
-2. **The engine package's transitive deps are whitelisted in CI.** A `dart pub deps --json` check fails the build if `packages/realm/`'s resolved dependency tree contains any signing/HMAC/crypto primitive (e.g. `crypto`, `cryptography`, `pointycastle`, `package:crypto/...`). Migration step 4 (provider plugin PR) wires this check.
+1. **`examples/livekit-token-server/` is a workspace member with its own `pubspec.yaml`** that imports `packages/realm_core/` but is NOT imported by it. Migration step 2 (workspace scaffold) creates this directory as a real Dart package.
+2. **The engine package's transitive deps are whitelisted in CI.** A `dart pub deps --json` check fails the build if `packages/realm_core/`'s resolved dependency tree contains any signing/HMAC/crypto primitive (e.g. `crypto`, `cryptography`, `pointycastle`, `package:crypto/...`). Migration step 4 (provider plugin PR) wires this check.
 
 Until both artifacts land, the relocation below is *intentional aspirational discipline* — the doc commits to the post-state without claiming the structural enforcement is yet in place. The compensating control in the interim is the cage-match grep: reviewers MUST grep `SignedRequest(` in any new Flutter-reachable code path and reject any hit.
 
 Example of a server-side strategy living outside the engine (illustrative; lands in migration step 2 at `examples/livekit-token-server/lib/signed_request.dart`):
 
 ```dart
-import 'package:realm/realm.dart' show TokenEndpointAuthStrategy;
+import 'package:realm_core/realm_core.dart' show TokenEndpointAuthStrategy;
 
 /// Engine signs the request body with a shared HMAC secret.
 /// Server-side use only — the secret would be extractable from any client
@@ -916,24 +920,40 @@ The two categories must never be confused. Anything in the first category is an 
 
 ## What is NOT in the engine
 
-Explicitly excluded from the Realm contract. These are world-internal:
+Explicitly excluded from the engine contract (`realm_core`). Most are world-internal; the two rendering items are not in the core but do ship with Realm (see "Package shape"):
 
 - **Per-world state stores.** Tech World's `ProgressService` (completed challenges, spellbook state) is Tech-World-specific. It needs a persistence backend, but it's the world's choice. Tech World's reference implementation will use Firestore; a self-hoster who wants a different backend writes a different `TechWorldStateStore` implementation. The engine doesn't see this interface.
 - **World vocabulary types.** `WordId`, `PromptChallengeId`, `CodeChallengeId`, `AvatarId`, `DoorState`, `SpeechBubble` — none of these are engine-level. They live in their world's package.
-- **Game-loop specifics.** Flame's `FlameGame` and `flame.World` are Tech-World-specific framings. The engine doesn't mandate Flame. A `World` subclass could be built on Flame (Tech World), on raw Flutter `CustomPainter` (the Foyer might), on `flutter_3d_controller`, on anything. The engine just hosts the World and provides substrate primitives.
-- **Animation/render systems.** Bubbles, metaballs, video shaders — all Tech World.
+- **Game-loop specifics, in the core.** `realm_core` doesn't mandate Flame: a `World` could be built on Flame (Tech World), on raw Flutter `CustomPainter` (the Foyer might), on `flutter_3d_controller`, on anything. But Flame is a substrate choice, not World vocabulary (Nick, 2026-08-20), so Realm ships an endorsed Flame implementation, `realm_flame`, instead of every future World inheriting a rendering stack through a game.
+- **Animation/render systems, in the core.** *Overturned 2026-08-20 for Realm as a whole* (this bullet used to read "all Tech World"): rendering ships *with* Realm, in `realm_flame`, including the video bubbles once they generalise. `realm_core` itself stays renderer-neutral; that is what `previewSnapshot()` returning `RoomPreview` rather than a `Widget` protects.
 - **AI agent integrations.** Clawd, Gremlin, Dreamfinder — Tech World. A world that wants AI participants registers them via its own LiveKit room logic; the engine has no opinion.
 - **Rendering modality (visual / audio / text / haptic).** The engine state must be expressible to *any* renderer — that's why `previewSnapshot()` returns `RoomPreview` (renderer-neutral) rather than `Widget`. Accessibility, alternative-modality rendering, screen-reader integration, and keyboard navigation all live in the rendering layer of each World (or in render-layer plugins shared across Worlds). The engine's responsibility is to keep state modality-neutral; the rendering layer's responsibility is to interpret that state for any sense.
 The rule: **if you can describe it without mentioning rooms, identity, presence, voice, channels, or blob storage, it's not engine.**
 
 But "not engine" doesn't always mean "World vocabulary" — there's a middle tier worth naming.
 
+## Package shape (agreed 2026-08-20)
+
+The engine ships as a family, on Flutter's federated-plugin pattern: an interface package, endorsed implementations, and one app-facing package that wires them together. (Recast direction agreed with Nick 2026-08-20, recorded in tech_world `docs/crucible/realm-flame/TEMPER.md`.)
+
+| Package | Role | Status |
+|---|---|---|
+| `realm_core` | Protocols and vocabulary types: the five interfaces, `World`, the registries. Slow, strictly versioned. No runtime dependencies and no Flutter, enforced by `no_leak_test` and `engine_deps_whitelist_test`. | exists |
+| `realm_firebase` | Endorsed implementation: identity, room config and blob storage on Firebase. | exists |
+| `realm_livekit` | Endorsed implementation: transport and presence. | planned |
+| `realm_flame` | Endorsed implementation: rendering, including video bubbles. | planned |
+| `realm` | App-facing: depends on `realm_core` plus the endorsed defaults and re-exports them. What a game puts in its pubspec. | planned |
+
+Until `realm` exists, a World depends on `realm_core` and the implementations it uses directly (Tech World: `realm_core` + `realm_firebase`).
+
+The dependency rules differ by package, and that is what reconciles Open Question #2 with the guards. `realm_core` may depend on nothing. The endorsed implementations and the app-facing `realm` may take Flutter, `livekit_client`, `http` and the like. The crypto gate can only ever sit on `realm_core`: `livekit_client` alone brings `dart_jsonwebtoken` → `pointycastle`, plus `crypto`, into whatever depends on it. That is not a token-minting risk in itself (minting needs the secret, which never reaches a client), but it is why the gate cannot move up the family.
+
 ## Three tiers: engine, plugins, worlds
 
 | Tier | Where it lives | Examples | Owns |
 |---|---|---|---|
-| **Engine** | `packages/realm/` | `AuthProvider`, `RoomConfigStore`, `StorageProvider`, `LiveKitTokenEndpoint`, `PresenceService`, `World` interface | Interfaces, lifecycle, no implementations |
-| **Plugins** | `packages/realm_<name>/` | `realm_firebase` (provider impl), `realm_github_oauth` (provider impl), `realm_code_editor` (feature, aspirational), `realm_avatars` (feature, aspirational), `realm_tilemaps` (feature, aspirational) | Optional capabilities multiple Worlds might use; implement engine interfaces or extend engine primitives |
+| **Engine** | `packages/realm_core/` | `AuthProvider`, `RoomConfigStore`, `StorageProvider`, `LiveKitTokenEndpoint`, `PresenceService`, `World` interface | Interfaces, lifecycle, no implementations |
+| **Plugins** | `packages/realm_<name>/` | `realm_firebase` (provider impl), `realm_livekit` and `realm_flame` (endorsed impls, planned; see "Package shape"), `realm_github_oauth` (provider impl), `realm_code_editor` (feature, aspirational), `realm_avatars` (feature, aspirational), `realm_tilemaps` (feature, aspirational) | Optional capabilities multiple Worlds might use; implement engine interfaces or extend engine primitives |
 | **Worlds** | `worlds/<name>/`, or a World's own repo (Tech World: `enspyrco/tech_world`) | `tech_world`, `repo_body`, `foyer` | One specific World, declares its plugins + its own vocabulary |
 
 The test for "plugin vs World vocabulary" is one question: **would another World plausibly want this?**
@@ -1061,7 +1081,7 @@ Each PR after step 1 is cage-match-worthy because every one of them touches a bo
 These are not blockers for the design note but must be answered before the corresponding PR:
 
 1. **Workspace tooling.** Dart workspaces are supported as of 3.6.0 (we're on 3.6). Confirm that `flutter test` runs all member packages from the root, that `flutter analyze --fatal-infos` works workspace-wide, that the existing CI workflow needs minimal change.
-2. **iOS/Android Firebase coupling.** `firebase_options.dart` is committed; iOS/Android Firebase SDKs are linked. **Resolved**: `packages/realm/` does NOT depend on `firebase_core` — that dependency is inverted relative to the three-tier model and the no-leak rule. From the first extracted commit, Firebase implementations live in `packages/realm_firebase/`. The engine package's `pubspec.yaml` whitelist (Flutter SDK, `livekit_client`, `http`, branded-type support utilities) is enforced by a `dart pub deps` check in CI — anything else added to the engine package fails the check. The "simpler" phase-1 shortcut (bundle Firebase into the engine) is rejected because day-1 dependency direction is the load-bearing decision; convenience compromises today become the engine's architecture forever.
+2. **iOS/Android Firebase coupling.** `firebase_options.dart` is committed; iOS/Android Firebase SDKs are linked. **Resolved**: `packages/realm_core/` does NOT depend on `firebase_core` — that dependency is inverted relative to the three-tier model and the no-leak rule. From the first extracted commit, Firebase implementations live in `packages/realm_firebase/`. The whitelist named here (Flutter SDK, `livekit_client`, `http`, branded-type support utilities) describes what the app-facing `realm` and the endorsed implementations may depend on (see "Package shape"). `realm_core` is stricter: no runtime dependencies at all (`no_leak_test`), and no signing or crypto primitive anywhere in its closure (`engine_deps_whitelist_test`, the `dart pub deps` check). The "simpler" phase-1 shortcut (bundle Firebase into the engine) is rejected because day-1 dependency direction is the load-bearing decision; convenience compromises today become the engine's architecture forever.
 3. ~~**`World` base class shape.**~~ **Resolved** — `World` is `abstract interface class`, not a base class. The single-inheritance collision with `flame.World` forced it. Additive evolution lands as new sibling interfaces (e.g. v2's `WorldFederationHooks`) that Worlds opt into via additional `implements` clauses; see the contract-versioning section.
 4. **Per-world `worldConfig` schema.** `Map<String, Object?>` is opaque-on-purpose at the engine, but each World wants typed access. Pattern: each World declares a `parseConfig(Map) → TypedConfig` method, and `worldConfig` is validated at room creation. Same shape as `LiveKitTopic.parse(String)`. Probably uncontroversial.
 5. **Existing `RoomSession` API stability.** It's been heavily DI'd recently. The engine's room-lifecycle abstraction may want to absorb it, or `RoomSession` may stay as a Tech-World-specific orchestrator on top of engine primitives. Resolve when writing the `TechWorld` wrap PR.
@@ -1076,7 +1096,7 @@ These are not blockers for the design note but must be answered before the corre
 - Replacing LiveKit. The engine assumes LiveKit. Pluggable transports are not a v1 goal.
 - Replacing Flame. Tech World uses Flame; future worlds may use it or not. The engine has no opinion.
 - Migrating Tech World off Firebase. Tech World keeps using Firebase via the new interfaces. The point is that *others can* swap, not that we do.
-- Publishing to pub.dev. The engine ships as a git dependency pinned to a commit SHA until interfaces stabilize. Publishing would also need a new package name: `realm` on pub.dev is MongoDB's (see "Naming and prior art").
+- Publishing to pub.dev. The engine ships as a git dependency pinned to a commit SHA until interfaces stabilize. Publishing the app-facing `realm` would also need a new name: `realm` on pub.dev is MongoDB's (see "Naming and prior art").
 - Cross-instance federation (rooms federated across separate Realm operators). The v1 engine *prepares for it* (see "Federation, deferred" below) but doesn't ship it.
 
 ## Federation, deferred

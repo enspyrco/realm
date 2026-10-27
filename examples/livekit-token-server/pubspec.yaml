@@ -1,7 +1,7 @@
 name: livekit_token_server
 description: >-
   Reference LiveKit token endpoint (server-side). A workspace member that
-  imports `realm` but is NOT imported by it — one of the two structural
+  imports `realm_core` but is NOT imported by it — one of the two structural
   artifacts that make the engine-vs-server-package boundary real (the other is
   the engine deps whitelist in CI, migration step 4). See DESIGN.md.
 publish_to: none
@@ -11,11 +11,11 @@ environment:
   sdk: ^3.6.0
 resolution: workspace
 dependencies:
-  realm:
-    path: ../../packages/realm
+  realm_core:
+    path: ../../packages/realm_core
   # Server-side ONLY. Signing/crypto primitives live here, never in
-  # `packages/realm/` (the client bundle) — the engine deps-whitelist test
-  # (packages/realm/test/engine_deps_whitelist_test.dart) fails the build if a
+  # `packages/realm_core/` (the client bundle) — the engine deps-whitelist test
+  # (packages/realm_core/test/engine_deps_whitelist_test.dart) fails the build if a
   # crypto primitive ever appears in the engine's transitive deps. ES256 lets
   # the exchange handler hold the private key and the mint handler hold only the
   # public key — see realm_credential_jwt.dart.

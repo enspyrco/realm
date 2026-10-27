@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:realm/realm.dart';
+import 'package:realm_core/realm_core.dart';
 
 /// Firestore implementation of [RoomConfigStore].
 ///

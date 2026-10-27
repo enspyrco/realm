@@ -4,7 +4,7 @@ description: >-
   (FirebaseAuthProvider, FirestoreRoomConfigStore, FirebaseStorageProvider).
 publish_to: none
 version: 0.0.1
-# LICENSE deferred with the engine — see task #1059 and packages/realm/pubspec.yaml.
+# LICENSE deferred with the engine — see task #1059 and packages/realm_core/pubspec.yaml.
 
 environment:
   sdk: ^3.6.0
@@ -12,9 +12,9 @@ environment:
 
 resolution: workspace
 
-# Dependency direction is load-bearing: this plugin depends on `realm` and
-# `firebase_*`; `realm` must NEVER depend on `firebase_core` — enforced by the
-# engine transitive-deps whitelist in packages/realm/test. Firebase constraints
+# Dependency direction is load-bearing: this plugin depends on `realm_core` and
+# `firebase_*`; `realm_core` must NEVER depend on `firebase_core` — enforced by the
+# engine transitive-deps whitelist in packages/realm_core/test. Firebase constraints
 # track enspyrco/tech_world's pubspec: a consuming World resolves this package
 # together with its own firebase_* constraints, so a bump here that the World
 # cannot satisfy breaks its `pub get` at its next pin bump.
@@ -28,8 +28,8 @@ dependencies:
   # "realm from this repo at the resolved commit" and compares that with the
   # consumer's own `ref:` literally, so consumers must pin a full commit SHA;
   # a tag or branch fails to resolve (README, "Using Realm from a World").
-  realm:
-    path: ../realm
+  realm_core:
+    path: ../realm_core
   firebase_auth: ^6.1.0
   cloud_firestore: ^6.0.2
   firebase_storage: ^13.0.5

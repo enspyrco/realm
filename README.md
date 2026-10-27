@@ -8,20 +8,25 @@ anything that satisfies the interfaces.
 
 [Tech World](https://github.com/enspyrco/tech_world) is the first World built on Realm.
 
-The architectural pin is [`packages/realm/DESIGN.md`](packages/realm/DESIGN.md): the engine
+The architectural pin is [`packages/realm_core/DESIGN.md`](packages/realm_core/DESIGN.md): the engine
 contract, the no-leak rule, the three tiers, and the migration plan.
 
 ## Packages
 
 | Path | Package | What it is |
 |---|---|---|
-| [`packages/realm`](packages/realm) | `realm` | The engine. Five interfaces (`AuthProvider`, `RoomConfigStore`, `StorageProvider`, `LiveKitTokenEndpoint`, `PresenceService`), the `World` interface, and the registries. Interfaces only, with no runtime dependencies. Pure Dart. |
+| [`packages/realm_core`](packages/realm_core) | `realm_core` | The engine core. Five interfaces (`AuthProvider`, `RoomConfigStore`, `StorageProvider`, `LiveKitTokenEndpoint`, `PresenceService`), the `World` interface, and the registries. Interfaces only, with no runtime dependencies. Pure Dart. |
 | [`packages/realm_firebase`](packages/realm_firebase) | `realm_firebase` | Provider plugin: `FirebaseAuthProvider`, `FirestoreRoomConfigStore`, `FirebaseStorageProvider`. A Flutter package. |
 | [`examples/livekit-token-server`](examples/livekit-token-server) | `livekit_token_server` | Server-side reference for the Realm credential (ES256 issue and verify). It imports the engine; the engine never imports it. Production minting runs in [`enspyrco/realm-token-server`](https://github.com/enspyrco/realm-token-server), whose parity test verifies a credential minted by this code. |
 
+More packages are planned on the same pattern (DESIGN.md, "Package shape"): endorsed
+`realm_livekit` and `realm_flame` implementations, and an app-facing `realm` package that
+depends on `realm_core` plus those defaults and re-exports them. Until it exists, a World
+depends on `realm_core` and the implementations it uses directly.
+
 ## The guards
 
-The engine's claims are enforced by tests in `packages/realm/test/`, not by prose:
+The engine's claims are enforced by tests in `packages/realm_core/test/`, not by prose:
 
 - **`no_leak_test`**: no engine source imports a backend, Flutter, `dart:ui`, `dart:io` or a
   crypto library, and the engine's `pubspec.yaml` declares no runtime dependencies.
@@ -40,11 +45,11 @@ packages:
 
 ```yaml
 dependencies:
-  realm:
+  realm_core:
     git:
       url: https://github.com/enspyrco/realm.git
       ref: <40-character commit SHA>
-      path: packages/realm
+      path: packages/realm_core
   realm_firebase:
     git:
       url: https://github.com/enspyrco/realm.git
@@ -52,8 +57,8 @@ dependencies:
       path: packages/realm_firebase
 ```
 
-Why not a tag or branch: `realm_firebase` depends on `realm` through `path: ../realm`. Inside
-a git dependency, pub rewrites that into "realm from this repo, at the commit it resolved",
+Why not a tag or branch: `realm_firebase` depends on `realm_core` through `path: ../realm_core`. Inside
+a git dependency, pub rewrites that into "realm_core from this repo, at the commit it resolved",
 then compares it with your own `ref:` as text. Only a full SHA equals its own resolution; a
 tag or branch makes pub report a version conflict. The same mechanism keeps the pair honest,
 because bumping one SHA without the other fails `pub get`.
@@ -63,8 +68,8 @@ it out of git) pointing at a local checkout:
 
 ```yaml
 dependency_overrides:
-  realm:
-    path: ../realm/packages/realm
+  realm_core:
+    path: ../realm/packages/realm_core
   realm_firebase:
     path: ../realm/packages/realm_firebase
 ```
@@ -79,7 +84,7 @@ same checks locally:
 flutter pub get
 flutter analyze --fatal-infos                   # covers every member
 
-(cd packages/realm && dart test)
+(cd packages/realm_core && dart test)
 (cd packages/realm_firebase && flutter test)    # Flutter package
 (cd examples/livekit-token-server && dart test)
 ```
