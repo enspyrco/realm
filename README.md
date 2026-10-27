@@ -95,4 +95,8 @@ messages belong to tech_world or to internal trackers, not to this repo.
 
 ## License
 
-<!-- LICENSE: pending Nick (task #10). Do not push while this marker exists. -->
+No license has been granted for this repository yet; the terms are being settled. The history
+imported from `enspyrco/tech_world` was published there under that repository's `LICENSE`.
+
+External code contributions can't be accepted until the terms and a contributor agreement are
+in place. Issues are welcome.

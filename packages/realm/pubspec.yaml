@@ -6,11 +6,11 @@ description: >-
   vocabulary. See DESIGN.md for the architectural pin.
 publish_to: none
 version: 0.0.1
-# LICENSE file not yet shipped. The license itself is DECIDED — AGPL v3 with a
-# linking exception, so that worlds built on the engine may carry any license
-# (see DESIGN.md, "License and business model"). What remains is wording, not
-# choice: AGPL-plus-linking-exception is less standard than the GPL Classpath
-# exception and wants a legal read, then a CLA, then the NOTICE/header sweep.
+# No LICENSE file yet: none ships until the terms are settled (decided
+# 2026-10-27). The legal read now examines MPL-2.0 for the client packages
+# (this one, realm_firebase) with AGPL-3.0 for server pieces, in place of the
+# earlier AGPL-v3-plus-linking-exception plan (task #1059); then a contributor
+# agreement, then the NOTICE/header sweep. See DESIGN.md, "License".
 
 environment:
   sdk: ^3.6.0

@@ -149,9 +149,11 @@ This section is architectural, not marketing. The license shapes what the engine
 
 The intersection of these three is the "commercial open source" playbook (GitLab, Sentry, Plausible, Mattermost, Grafana, Discourse). The license is open enough to drive adoption and federation; the business model captures value at the *operational* layer (hosting, enterprise features, marketplace), not the *code* layer.
 
-### License: AGPL v3
+### License: none yet, under legal review
 
-Realm engine, reference worlds (Tech World, repo-body, foyer), and reference provider implementations all ship under AGPL v3.
+**Status (2026-10-27): no LICENSE ships yet.** The plan has moved twice: AGPL v3 for everything (this section as first written), then AGPL v3 plus a linking exception so Worlds may carry any license (claude-tasks#1059, 2026-07-25). The legal read now examines **MPL-2.0 for the client packages** (`realm`, `realm_firebase`: changes to the engine's own files stay open, while Worlds and apps built on them may be closed) **with AGPL-3.0 for server components** (token servers, a future federation server), which is where AGPL's network clause applies. The rationale below, and the first of the "Three tensions" further down, argue the original AGPL case; they still explain why server components want that clause.
+
+The original plan: Realm engine, reference worlds (Tech World, repo-body, foyer), and reference provider implementations all ship under AGPL v3.
 
 Rationale:
 - **AGPL's network-use clause deters competitive cloud clones.** Anyone hosting modified Realm-as-a-service must release their changes. Handles the "Amazon problem" that drove MongoDB to SSPL — without resorting to source-available licenses that fracture community trust.
@@ -161,7 +163,7 @@ Rationale:
 
 ### Open-core split
 
-Free, AGPL-licensed:
+Free, open source (terms under review; see "License" above):
 - Realm engine (`packages/realm/`)
 - Reference World implementations: `TechWorld`, `RepoBodyWorld`, `FoyerWorld`
 - Reference provider implementations: Firebase-backed, GitHub OAuth, etc.
@@ -205,7 +207,7 @@ For Realm (the platform, operator-facing):
 ### Pre-revenue funding
 
 Operate from:
-- **Screen Australia Games Production Fund grant** (in flight, `docs/grant-application/`)
+- **Screen Australia Games Production Fund grant** (applied 2026; that process is over. Materials in tech_world's `docs/grant-application/`)
 - **Bootstrap** — Nick's existing runway
 - **GitHub Sponsors / Open Collective** (small but signals legitimacy)
 - **Pre-sales of enterprise tier** (deliver as we build) — when product-market fit becomes visible
