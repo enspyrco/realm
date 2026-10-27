@@ -1,0 +1,74 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    # Branch protection requires this check by NAME — rename it there too.
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          # Keep in lockstep with .fvmrc. pubspec.lock is resolved against this
+          # SDK's pinned packages, and the next step refuses a lock written by
+          # any other Flutter.
+          flutter-version: '3.41.7'
+      - name: Install dependencies (lockfile enforced)
+        # --enforce-lockfile fails instead of quietly re-resolving. Without it a
+        # lock written by a different Flutter is rewritten on the runner and CI
+        # tests a resolution nobody committed — enspyrco/tech_world's state at
+        # the split (lock from Flutter 3.47.6, CI on 3.41.7).
+        run: flutter pub get --enforce-lockfile
+      - name: Analyze code
+        # Workspace-wide: root `flutter analyze` covers every member.
+        run: flutter analyze --fatal-infos
+      - name: Run every workspace member's tests
+        # Root `flutter test` does NOT descend into workspace members, so the
+        # members' tests — the engine's no-leak, deps-whitelist and doc-sync
+        # guards among them — run only because this step runs them.
+        #
+        # Bound to the DECLARED workspace (the root pubspec's `workspace:` list,
+        # read back through `dart pub workspace list`), not to a directory glob.
+        # A glob can only notice "nothing matched"; this also fails when a
+        # declared member has no test/ directory, so a new member is covered —
+        # or exempted on purpose, below — the moment it joins the workspace.
+        shell: bash
+        run: |
+          set -euo pipefail
+          root_name=$(sed -n 's/^name: *//p' pubspec.yaml)
+          exempt=""  # space-separated package names allowed no test/ dir; none today
+          tested=0
+          while IFS=$'\t' read -r name pkg; do
+            if [ ! -d "$pkg/test" ]; then
+              case " $exempt " in
+                *" $name "*) echo "== $name: exempt (no tests) =="; continue ;;
+              esac
+              echo "ERROR: workspace member $name ($pkg) has no test/ directory. Add tests, or add it to 'exempt' with a reason." >&2
+              exit 1
+            fi
+            # Runner by package type: a Flutter package (declares the flutter
+            # SDK) needs `flutter test`; a pure-Dart package uses `dart test`.
+            if grep -qE '^\s*(sdk:\s*flutter|flutter:)' "$pkg/pubspec.yaml"; then
+              echo "== flutter test in $name =="
+              (cd "$pkg" && flutter test)
+            else
+              echo "== dart test in $name =="
+              (cd "$pkg" && dart test)
+            fi
+            tested=$((tested + 1))
+          done < <(dart pub workspace list --json \
+            | jq -r --arg root "$root_name" \
+                '.packages[] | select(.name != $root) | "\(.name)\t\(.path)"')
+          echo "workspace members tested: $tested"
+          # A failure inside the process substitution above cannot trip set -e;
+          # it arrives here as zero iterations. Zero is the failure, not a pass.
+          if [ "$tested" -eq 0 ]; then
+            echo "ERROR: no workspace member was tested — expected at least realm. Did 'dart pub workspace list' fail?" >&2
+            exit 1
+          fi

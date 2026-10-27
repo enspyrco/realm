@@ -1,0 +1,116 @@
+#!/bin/bash
+
+# Pre-commit hook for realm. Ported from enspyrco/tech_world's
+# .githooks/pre-commit at the split (2026-10-27): the secret scan is
+# unchanged; the analyzer step prefers fvm (see below). Bare #NNNN numbers
+# are task-tracker ids; tech_world PRs are written tech_world#NNN.
+# 1. Secret scan against staged diff (incident motivation: tech_world#227 leaked
+#    DREAMFINDER_API_KEY by hardcoding it as String.fromEnvironment defaultValue
+#    on 2026-04-09; rotated 2026-05-09)
+# 2. Flutter analyzer with --fatal-infos
+
+set -e
+
+# --- Secret scan ----------------------------------------------------------
+echo "Scanning staged diff for secrets..."
+
+# AMR (not AM): include Renames so a commit whose ONLY staged change is a
+# rename+edit still enters the secret scan. With an AM-only gate, a pure-R
+# commit produces an empty $staged, skips this whole block, and Pattern 2's
+# own AMR loop would never even run (cage-match tech_world#522, Tesla).
+staged=$(git diff --cached --diff-filter=AMR)
+
+# Skip empty diffs
+if [ -n "$staged" ]; then
+    # Pattern 1: String.fromEnvironment with non-empty defaultValue containing
+    # >=16 chars of base64-ish content. Catches the exact tech_world#227 shape.
+    if echo "$staged" | grep -qE "^\+.*defaultValue:[[:space:]]*['\"][A-Za-z0-9_+/=-]{16,}['\"]"; then
+        echo "❌ Pre-commit blocked: String.fromEnvironment defaultValue looks like a hardcoded secret."
+        echo "   Use a real env var or GitHub Secret + --dart-define instead."
+        echo "   Override (NOT recommended): git commit --no-verify"
+        exit 1
+    fi
+
+    # Pattern 2: long hex literal (40+ chars) in a non-exempt source/config file.
+    # The exemption MUST be scoped to the file the hex lives in. An earlier
+    # version AND-ed two whole-diff greps ("any non-exempt file touched?" &&
+    # "any 40+ hex anywhere?"), which false-positived whenever a commit touched
+    # a .dart file AND a pubspec.lock sha256 in the same diff — forcing
+    # --no-verify on tech_world#520/#521. Iterate per-file so the exemption and the
+    # hex always refer to the same file (#2256).
+    #
+    # Exemptions are SURGICAL, not carpet-bombed (cage-match tech_world#522, Kelvin+Tesla):
+    # only files that legitimately carry dependency checksums — lockfiles
+    # (*.lock, *-lock.json) — plus test fixtures and vendored deps. A blanket
+    # *.json exemption was a secret-bypass (a 40+hex in service-account.json
+    # would never be scanned); a real secret that "loves JSON" must still trip.
+    # Add a specific path here only when a genuine checksum false-positives.
+    # ACCEPTED RESIDUAL (cage-match tech_world#522, Tesla): the exemption is by suffix, so
+    # a deliberately-named `secrets.lock` / `creds-lock.json` would evade the hex
+    # scan. This hook defends against ACCIDENTAL commits, not a motivated author
+    # crafting a lockfile-shaped name; pinning to exact basenames
+    # (pubspec.lock|package-lock.json|…) would re-invite the false-positives on
+    # every new lockfile type that this fix exists to kill. Suffix + this note is
+    # the deliberate tradeoff.
+    #
+    # `*/swiftpm/Package.resolved` is Xcode's SPM lockfile — same checksum class as
+    # *.lock (it pins git revision SHAs of public packages), but Apple named it
+    # `.resolved`. Scoped to the swiftpm/ directory rather than a bare `*.resolved`
+    # suffix, so a crafted `secrets.resolved` elsewhere in the tree still trips the
+    # scan — tighter than the residual above, not looser.
+    #
+    # -z / read -d '': NUL-delimited so a path containing spaces OR newlines is
+    # one iteration, not split (a newline'd path could otherwise skip its scan).
+    # --diff-filter=AMR: include Renames — a rename+edit (R) can carry a new
+    # secret on its + lines; A/M alone would never scan it.
+    while IFS= read -r -d '' _file; do
+        case "$_file" in
+            *.lock|*-lock.json|*/swiftpm/Package.resolved|*test/*fixture*|*node_modules/*) continue ;;
+        esac
+        if git diff --cached --diff-filter=AMR -- "$_file" | grep -qE "^\+.*['\"][a-fA-F0-9]{40,}['\"]"; then
+            echo "❌ Pre-commit blocked: long hex literal in staged change (40+ chars) in $_file."
+            echo "   If this is a checksum/hash and not a secret, exempt it explicitly via path."
+            echo "   Override (NOT recommended): git commit --no-verify"
+            exit 1
+        fi
+    done < <(git diff --cached --diff-filter=AMR --name-only -z)
+
+    # Pattern 3: known third-party API key shapes
+    if echo "$staged" | grep -qE "^\+.*\b(sk-[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{36}|gho_[A-Za-z0-9]{36}|AKIA[A-Z0-9]{16}|AIzaSy[A-Za-z0-9_-]{33})\b"; then
+        echo "❌ Pre-commit blocked: detected API key shape (Anthropic/OpenAI/GitHub/AWS/Google)."
+        exit 1
+    fi
+fi
+
+# Optional ceiling check: if gitleaks is installed, run it too
+if command -v gitleaks > /dev/null 2>&1; then
+    gitleaks protect --staged --redact --no-banner || {
+        echo "❌ Pre-commit blocked: gitleaks found a secret."
+        exit 1
+    }
+fi
+
+echo "✅ Secret scan clean"
+
+# --- Flutter analyzer -----------------------------------------------------
+# Prefer fvm, which reads the committed .fvmrc, over whichever `flutter` is on
+# PATH. tech_world's hook ran the system Flutter, a different version from the
+# one its CI pins, so each run could rewrite pubspec.lock against that other
+# SDK's pinned packages. Here CI runs `pub get --enforce-lockfile`, so a lock
+# written by the wrong Flutter fails the build; the hook must not write one.
+if command -v fvm > /dev/null 2>&1; then
+    FLUTTER=(fvm flutter)
+else
+    echo "⚠️  fvm not found: falling back to the flutter on PATH, which may not match .fvmrc."
+    FLUTTER=(flutter)
+fi
+echo "Running Flutter analyzer (${FLUTTER[*]})..."
+if ! "${FLUTTER[@]}" analyze --fatal-infos; then
+    echo ""
+    echo "❌ Commit blocked: Flutter analyzer found issues."
+    echo "Fix the issues above before committing."
+    exit 1
+fi
+
+echo "✅ Analyzer passed"
+exit 0

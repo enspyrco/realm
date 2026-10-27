@@ -19,8 +19,8 @@
 // signing lib (or the test framework's own transitive graph) never reaches a
 // client, so it is not a leak and must not false-positive the gate.
 //
-// It rides the workspace member-test loop (test.yml / deploy.yml) into CI, so
-// no separate YAML wiring is required.
+// It rides the workspace member-test loop (.github/workflows/ci.yml) into CI,
+// so no separate YAML wiring is required.
 
 import 'dart:convert';
 import 'dart:io';

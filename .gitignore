@@ -1,0 +1,17 @@
+# Dart / Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+coverage/
+
+# FVM's SDK cache. The version pin itself (.fvmrc) IS committed: CI runs
+# `pub get --enforce-lockfile`, and pubspec.lock only reproduces on the Flutter
+# that wrote it, so the pin has to travel with every clone.
+.fvm/
+
+# IDEs / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store

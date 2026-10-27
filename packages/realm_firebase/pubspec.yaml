@@ -2,7 +2,6 @@ name: realm_firebase
 description: >-
   Firebase-backed implementations of Realm engine interfaces
   (FirebaseAuthProvider, FirestoreRoomConfigStore, FirebaseStorageProvider).
-  Implementations land in migration step 4; skeleton reserves the namespace.
 publish_to: none
 version: 0.0.1
 # LICENSE deferred with the engine — see task #1059 and packages/realm/pubspec.yaml.
@@ -15,14 +14,20 @@ resolution: workspace
 
 # Dependency direction is load-bearing: this plugin depends on `realm` and
 # `firebase_*`; `realm` must NEVER depend on `firebase_core` — enforced by the
-# engine transitive-deps whitelist in packages/realm/test. Firebase versions
-# track the root app's pubspec so the shared workspace resolution is unchanged.
+# engine transitive-deps whitelist in packages/realm/test. Firebase constraints
+# track enspyrco/tech_world's pubspec: a consuming World resolves this package
+# together with its own firebase_* constraints, so a bump here that the World
+# cannot satisfy breaks its `pub get` at its next pin bump.
 dependencies:
   # realm_firebase is a Flutter package: its firebase_* plugins pull in dart:ui,
   # so its tests need `flutter test`, not `dart test`. Declaring the flutter SDK
   # both makes that true and lets CI's member-test loop detect the right runner.
   flutter:
     sdk: flutter
+  # Sibling path dep. Inside a consumer's git dependency pub rewrites it to
+  # "realm from this repo at the resolved commit" and compares that with the
+  # consumer's own `ref:` literally, so consumers must pin a full commit SHA;
+  # a tag or branch fails to resolve (README, "Using Realm from a World").
   realm:
     path: ../realm
   firebase_auth: ^6.1.0
