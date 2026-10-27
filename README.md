@@ -71,9 +71,9 @@ dependency_overrides:
 
 ## Development
 
-The Flutter version is pinned in [`.fvmrc`](.fvmrc) and CI uses the same one. Use
-[fvm](https://fvm.app), because `pubspec.lock` only reproduces on the Flutter that wrote it,
-and CI runs `pub get --enforce-lockfile`.
+The Flutter version is pinned in [`.fvmrc`](.fvmrc), and CI reads its version from the same
+file. Use [fvm](https://fvm.app), because `pubspec.lock` only reproduces on the Flutter that
+wrote it, and CI runs `pub get --enforce-lockfile`.
 
 ```bash
 fvm flutter pub get

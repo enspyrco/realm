@@ -15,10 +15,11 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          # Keep in lockstep with .fvmrc. pubspec.lock is resolved against this
-          # SDK's pinned packages, and the next step refuses a lock written by
-          # any other Flutter.
-          flutter-version: '3.41.7'
+          # The version comes from .fvmrc, the same file fvm and the pre-commit
+          # hook read, so CI and every clone run one Flutter by construction.
+          # pubspec.lock is resolved against that SDK's pinned packages, and
+          # the next step refuses a lock written by any other Flutter.
+          flutter-version-file: .fvmrc
       - name: Install dependencies (lockfile enforced)
         # --enforce-lockfile fails instead of quietly re-resolving. Without it a
         # lock written by a different Flutter is rewritten on the runner and CI
