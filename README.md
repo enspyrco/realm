@@ -89,8 +89,13 @@ flutter analyze --fatal-infos                   # covers every member
 (cd examples/livekit-token-server && dart test)
 ```
 
-`ci.yml` pins the Flutter version, and `pubspec.lock` only reproduces on the Flutter that wrote
-it, so regenerate the lockfile with that version.
+Flutter is pinned once, in the root `pubspec.yaml` (`environment: flutter:`). CI reads it, and
+`flutter pub get` refuses any other version, because `pubspec.lock` only reproduces on the
+Flutter that wrote it. [Renovate](renovate.json) opens a PR for each new Flutter release that
+bumps the pin and regenerates the lockfile on the new version; upgrade your local Flutter when
+it lands. Renovate manages the root pubspec only (it can't update a pub workspace's lock from
+a member), and a weekly lockfile-maintenance PR picks up the members' updates within their
+constraints.
 
 ## History
 

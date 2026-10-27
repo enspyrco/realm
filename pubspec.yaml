@@ -7,6 +7,11 @@ publish_to: none
 
 environment:
   sdk: ^3.6.0
+  # THE Flutter pin for this repo: CI reads it (flutter-version-file), Renovate
+  # bumps it and regenerates pubspec.lock on the new version in the same PR.
+  # Exact on purpose: the lockfile only reproduces on the Flutter that wrote it,
+  # so `flutter pub get` refuses any other. Upgrade your local Flutter to match.
+  flutter: 3.47.6
 
 # CI runs every member's tests by iterating THIS list (via `dart pub workspace
 # list`), not a directory glob, and fails if a declared member has no test/

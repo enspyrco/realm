@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "lockFileMaintenance": { "enabled": true },
+  "packageRules": [
+    {
+      "description": "Members of the pub workspace have no pubspec.lock beside them (the lock is at the root), and Renovate can't regenerate a workspace lock from a member (renovatebot/renovate#40361, not planned). Their updates within constraints arrive through lockFileMaintenance at the root; major bumps in a member's pubspec are manual.",
+      "matchManagers": ["pub"],
+      "matchFileNames": ["packages/**", "examples/**"],
+      "enabled": false
+    },
+    {
+      "description": "The Dart SDK constraint follows from the Flutter pin (Flutter bundles Dart), so don't bump it separately.",
+      "matchManagers": ["pub"],
+      "matchDepNames": ["dart"],
+      "enabled": false
+    },
+    {
+      "description": "Flutter SDK releases: the pin in the root pubspec's environment.flutter. Renovate regenerates pubspec.lock on the new version in the same PR.",
+      "matchManagers": ["pub"],
+      "matchDepNames": ["flutter"],
+      "groupName": "Flutter SDK"
+    }
+  ]
+}

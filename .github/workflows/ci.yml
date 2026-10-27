@@ -15,11 +15,9 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          # pubspec.lock is resolved against this SDK's pinned packages, and the
-          # next step refuses a lock written by any other Flutter, so bump this
-          # and the lockfile together. Independent of tech_world's pin: the
-          # engine has no plugin stack holding it to an older Flutter.
-          flutter-version: '3.47.6'
+          # The version comes from pubspec.yaml's environment.flutter, the one
+          # pin Renovate bumps (with a regenerated lockfile in the same PR).
+          flutter-version-file: pubspec.yaml
       - name: Install dependencies (lockfile enforced)
         # --enforce-lockfile fails instead of quietly re-resolving. Without it a
         # lock written by a different Flutter is rewritten on the runner and CI
