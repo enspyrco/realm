@@ -1,4 +1,4 @@
-import 'package:realm/realm.dart';
+import 'package:realm_core/realm_core.dart';
 import 'package:test/test.dart';
 
 /// A world that does nothing, for registry tests that only care about identity.

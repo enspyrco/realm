@@ -25,7 +25,7 @@ class LiveKitTokenEndpoint {
 ///
 /// **The engine ships exactly one concrete strategy — [BearerCredential] —
 /// because it is the only one safe to instantiate in client code.** Anything
-/// declared in `packages/realm/` is shipped to every Flutter web, mobile and
+/// declared in `packages/realm_core/` is shipped to every Flutter web, mobile and
 /// desktop client; a secret-bearing strategy declared here would be extractable
 /// from any bundle. Server-side strategies (HMAC-signed request, mTLS,
 /// IP-allowlist) therefore ship in server-only packages — see

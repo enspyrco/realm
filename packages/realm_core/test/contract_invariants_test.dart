@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:realm/realm.dart';
+import 'package:realm_core/realm_core.dart';
 import 'package:test/test.dart';
 
 void main() {

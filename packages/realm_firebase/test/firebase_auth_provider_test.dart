@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:realm/realm.dart';
+import 'package:realm_core/realm_core.dart';
 import 'package:realm_firebase/realm_firebase.dart';
 import 'package:test/test.dart';
 

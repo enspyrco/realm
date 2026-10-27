@@ -1,5 +1,5 @@
 /// The Realm-issued credential JWT — the opaque token wrapped in a
-/// [RealmCredential] (`packages/realm/DESIGN.md`, "Credential exchange
+/// [RealmCredential] (`packages/realm_core/DESIGN.md`, "Credential exchange
 /// boundary").
 ///
 /// **Asymmetric by construction (ES256).** The credential-exchange handler
@@ -21,7 +21,7 @@ library;
 import 'dart:convert';
 
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
-import 'package:realm/realm.dart';
+import 'package:realm_core/realm_core.dart';
 
 /// Issuer (`iss`) claim identifying credentials minted by a Realm exchange.
 const realmIssuer = 'realm';

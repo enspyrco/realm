@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:livekit_token_server/livekit_token_server.dart';
-import 'package:realm/realm.dart';
+import 'package:realm_core/realm_core.dart';
 import 'package:test/test.dart';
 
 import 'support/ec_keys.dart';

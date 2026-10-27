@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:http/http.dart' as http;
-import 'package:realm/realm.dart';
+import 'package:realm_core/realm_core.dart';
 
 /// Firebase implementation of [AuthProvider].
 ///
@@ -16,7 +16,7 @@ import 'package:realm/realm.dart';
 /// token. It sends that native token to the Realm credential-exchange endpoint
 /// ([exchangeEndpoint]), which verifies it server-side (Firebase Admin SDK) and
 /// mints an opaque [RealmCredential]. This is what keeps the engine and the
-/// LiveKit-mint endpoint provider-agnostic — see `packages/realm/DESIGN.md`,
+/// LiveKit-mint endpoint provider-agnostic — see `packages/realm_core/DESIGN.md`,
 /// "Credential exchange boundary" (resolved 2026-08-10).
 ///
 /// **Scope note**: [signIn] currently implements the Firebase-native flows

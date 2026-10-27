@@ -2,13 +2,13 @@
 // second structural artifact of the engine-vs-server-package boundary; the
 // first is examples/livekit-token-server/ from step 2).
 //
-// WHY: `packages/realm/` is the ENGINE package, and the engine package is
+// WHY: `packages/realm_core/` is the ENGINE package, and the engine package is
 // shipped to every Flutter web/mobile/desktop client. If a signing/HMAC/crypto
 // primitive could reach the engine's *shipped* dependency closure, a client
 // could mint its own LiveKit (or any Realm-internal) tokens — collapsing the
 // credential-exchange trust boundary. DESIGN.md "Server-side strategies live
 // outside the engine package": those live in realm_firebase or in
-// examples/livekit-token-server/, never in packages/realm/.
+// examples/livekit-token-server/, never in packages/realm_core/.
 //
 // This is the dependency-graph sibling of no_leak_test.dart: no_leak keeps
 // backend *types* out of the engine one layer up (imports); this keeps signing
@@ -50,7 +50,7 @@ const _forbidden = <String>{
 
 void main() {
   test(
-    'engine package `realm` ships no signing/crypto primitive '
+    'engine package `realm_core` ships no signing/crypto primitive '
     '(DESIGN.md transitive-deps whitelist)',
     () {
       final result = Process.runSync('dart', ['pub', 'deps', '--json']);
@@ -67,11 +67,11 @@ void main() {
           (p as Map<String, Object?>)['name']! as String: p,
       };
 
-      final realm = nodes['realm'];
+      final realm = nodes['realm_core'];
       expect(
         realm,
         isNotNull,
-        reason: 'no `realm` node in the pub deps graph — did the package get '
+        reason: 'no `realm_core` node in the pub deps graph — did the package get '
             'renamed, or is this running outside the workspace?',
       );
 
@@ -98,7 +98,7 @@ void main() {
       expect(
         violations,
         isEmpty,
-        reason: 'Engine package `realm` transitively ships signing/crypto '
+        reason: 'Engine package `realm_core` transitively ships signing/crypto '
             'primitive(s): $violations.\n'
             'These belong in realm_firebase or examples/livekit-token-server, '
             'never in the client-shipped engine package. A signing capability '

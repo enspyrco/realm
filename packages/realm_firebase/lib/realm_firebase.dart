@@ -2,12 +2,12 @@
 ///
 /// `FirebaseStorageProvider`, `FirestoreRoomConfigStore`, and
 /// `FirebaseAuthProvider` implement the engine interfaces from `package:realm`
-/// (migration step 4). See `packages/realm/DESIGN.md`.
+/// (migration step 4). See `packages/realm_core/DESIGN.md`.
 ///
-/// Dependency direction is load-bearing: this package depends on `realm` and
-/// `firebase_*`; `realm` must NEVER depend on `firebase_core`. That direction
+/// Dependency direction is load-bearing: this package depends on `realm_core` and
+/// `firebase_*`; `realm_core` must NEVER depend on `firebase_core`. That direction
 /// is enforced structurally by the engine transitive-deps whitelist in
-/// `packages/realm/test/engine_deps_whitelist_test.dart`.
+/// `packages/realm_core/test/engine_deps_whitelist_test.dart`.
 ///
 /// No-leak: these classes translate Firebase SDK types (`User`,
 /// `DocumentSnapshot`, `Reference`, `FirebaseException`) into engine value types

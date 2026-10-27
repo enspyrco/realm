@@ -1,9 +1,9 @@
-name: realm
+name: realm_core
 description: >-
-  Realm — a multiplayer worldbuilding engine. Hosts named rooms; each room
-  instantiates a World. Provides the shared substrate (identity, presence,
-  voice, room transport, blob storage) so a world can be just its own
-  vocabulary. See DESIGN.md for the architectural pin.
+  The core of Realm, a multiplayer worldbuilding engine: the protocols and
+  vocabulary types for rooms that each instantiate a World (identity,
+  presence, voice, room transport, blob storage). Interfaces only, no runtime
+  dependencies. See DESIGN.md for the architectural pin and package shape.
 publish_to: none
 version: 0.0.1
 # No LICENSE file yet: none ships until the terms are settled (decided
