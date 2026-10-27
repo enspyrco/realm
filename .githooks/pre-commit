@@ -105,7 +105,13 @@ else
     FLUTTER=(flutter)
 fi
 echo "Running Flutter analyzer (${FLUTTER[*]})..."
-if ! "${FLUTTER[@]}" analyze --fatal-infos; then
+# Run Flutter with git's hook variables unset. In a linked worktree, git
+# exports an absolute GIT_DIR (and GIT_INDEX_FILE) to hooks; Flutter works out
+# its own version by running git inside its SDK, inherits them, and identifies
+# as 0.0.0-unknown. pub get then fails ("requires Flutter SDK >=3.0.0"), and
+# the bogus identity is written into the SDK's cache (flutter.version.json,
+# flutter_tools.stamp), where fvm flags a version mismatch on every later run.
+if ! env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE "${FLUTTER[@]}" analyze --fatal-infos; then
     echo ""
     echo "❌ Commit blocked: Flutter analyzer found issues."
     echo "Fix the issues above before committing."
