@@ -11,6 +11,14 @@ environment:
   # bumps it and regenerates pubspec.lock on the new version in the same PR.
   # Exact on purpose: the lockfile only reproduces on the Flutter that wrote it,
   # so `flutter pub get` refuses any other. Upgrade your local Flutter to match.
+  #
+  # Renovate regenerates the lock with `flutter pub` only if this file's text
+  # contains the string `sdk: flutter` (renovatebot/renovate,
+  # lib/modules/manager/pub/artifacts.ts). This root has no Flutter dependency
+  # to supply it, so without this paragraph Renovate runs `dart pub`, which
+  # refuses this workspace, and the bump PR ships a stale lock (enspyrco/realm#5).
+  # CI fails if the string goes missing. If Renovate learns to read
+  # environment.flutter, drop this paragraph and that CI step.
   flutter: 3.47.6
 
 # CI runs every member's tests by iterating THIS list (via `dart pub workspace

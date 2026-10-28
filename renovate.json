@@ -16,7 +16,7 @@
       "enabled": false
     },
     {
-      "description": "Flutter SDK releases: the pin in the root pubspec's environment.flutter. Renovate regenerates pubspec.lock on the new version in the same PR.",
+      "description": "Flutter SDK releases: the pin in the root pubspec's environment.flutter. Renovate regenerates pubspec.lock on the new version in the same PR, but only because the root pubspec's text contains `sdk: flutter` (see the comment beside the pin; CI guards it).",
       "matchManagers": ["pub"],
       "matchDepNames": ["flutter"],
       "groupName": "Flutter SDK"

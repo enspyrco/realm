@@ -12,6 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Check Renovate will regenerate the lock with flutter, not dart
+        # Renovate picks `flutter pub` over `dart pub` by a plain substring test
+        # on the pubspec, `content.includes('sdk: flutter')`. The root pubspec
+        # carries that string in a comment beside the pin; see it for why. This
+        # is the same test, so a reworded comment fails here, not silently at
+        # the next Flutter release.
+        run: |
+          grep -qF 'sdk: flutter' pubspec.yaml || {
+            echo "ERROR: pubspec.yaml no longer contains 'sdk: flutter', so Renovate's Flutter-bump PRs will run dart pub and ship a stale pubspec.lock. Restore the comment beside environment.flutter." >&2
+            exit 1
+          }
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
