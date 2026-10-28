@@ -19,7 +19,7 @@ environment:
   # refuses this workspace, and the bump PR ships a stale lock (enspyrco/realm#5).
   # CI fails if the string goes missing. If Renovate learns to read
   # environment.flutter, drop this paragraph and that CI step.
-  flutter: 3.47.6
+  flutter: 3.47.8
 
 # CI runs every member's tests by iterating THIS list (via `dart pub workspace
 # list`), not a directory glob, and fails if a declared member has no test/
