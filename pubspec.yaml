@@ -27,7 +27,7 @@ environment:
 workspace:
   - packages/realm_core
   - packages/realm_firebase
-  - examples/livekit-token-server
+  - packages/realm_credential
 
 dev_dependencies:
   # Provides the lint set in analysis_options.yaml. Same version the members

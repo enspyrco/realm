@@ -9,7 +9,7 @@
 /// contents — room grants, embedded agent dispatch, metadata — are entirely
 /// the endpoint's concern.
 ///
-/// Reference implementations live in `examples/livekit-token-server/`.
+/// Reference implementations live in `packages/realm_credential/`.
 class LiveKitTokenEndpoint {
   /// Points the engine at [url], authenticating with [authStrategy].
   const LiveKitTokenEndpoint({required this.url, required this.authStrategy});
@@ -29,7 +29,7 @@ class LiveKitTokenEndpoint {
 /// desktop client; a secret-bearing strategy declared here would be extractable
 /// from any bundle. Server-side strategies (HMAC-signed request, mTLS,
 /// IP-allowlist) therefore ship in server-only packages — see
-/// `examples/livekit-token-server/`.
+/// `packages/realm_credential/`.
 ///
 /// The interface is deliberately NOT sealed. Sealing would force every variant
 /// into the engine's library, and the engine's library is the client bundle —
@@ -37,7 +37,7 @@ class LiveKitTokenEndpoint {
 /// annotation, which is the only kind of boundary that actually holds.
 ///
 /// Two artifacts make that boundary structural rather than aspirational:
-/// `examples/livekit-token-server/` as a workspace member that imports the
+/// `packages/realm_credential/` as a workspace member that imports the
 /// engine and is never imported by it (**shipped**, migration step 2), and a
 /// CI check on the engine's resolved transitive dependencies that fails the
 /// build if any signing or crypto primitive appears (**pending**, migration

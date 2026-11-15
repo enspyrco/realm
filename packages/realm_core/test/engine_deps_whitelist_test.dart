@@ -1,6 +1,6 @@
 // Engine-package transitive-deps gate (DESIGN.md, migration step 4 — the
 // second structural artifact of the engine-vs-server-package boundary; the
-// first is examples/livekit-token-server/ from step 2).
+// first is packages/realm_credential/ from step 2).
 //
 // WHY: `packages/realm_core/` is the ENGINE package, and the engine package is
 // shipped to every Flutter web/mobile/desktop client. If a signing/HMAC/crypto
@@ -8,7 +8,7 @@
 // could mint its own LiveKit (or any Realm-internal) tokens — collapsing the
 // credential-exchange trust boundary. DESIGN.md "Server-side strategies live
 // outside the engine package": those live in realm_firebase or in
-// examples/livekit-token-server/, never in packages/realm_core/.
+// packages/realm_credential/, never in packages/realm_core/.
 //
 // This is the dependency-graph sibling of no_leak_test.dart: no_leak keeps
 // backend *types* out of the engine one layer up (imports); this keeps signing
@@ -32,7 +32,7 @@ import 'package:test/test.dart';
 /// `cryptography`, `pointycastle` explicitly ("e.g."); the set is extended to
 /// the token-signing and key-material family because the *capability* being
 /// fenced out is "can this package sign/mint a token", not any one library.
-/// realm_firebase and examples/livekit-token-server may carry these freely.
+/// realm_firebase and packages/realm_credential may carry these freely.
 const _forbidden = <String>{
   'crypto', // SHA/HMAC — dart:crypto community package
   'cryptography', // AEAD/signing
@@ -100,7 +100,7 @@ void main() {
         isEmpty,
         reason: 'Engine package `realm_core` transitively ships signing/crypto '
             'primitive(s): $violations.\n'
-            'These belong in realm_firebase or examples/livekit-token-server, '
+            'These belong in realm_firebase or packages/realm_credential, '
             'never in the client-shipped engine package. A signing capability '
             'in the engine lets any client mint its own tokens — see DESIGN.md '
             '"Server-side strategies live outside the engine package".',
