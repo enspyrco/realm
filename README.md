@@ -17,7 +17,7 @@ contract, the no-leak rule, the three tiers, and the migration plan.
 |---|---|---|
 | [`packages/realm_core`](packages/realm_core) | `realm_core` | The engine core. Five interfaces (`AuthProvider`, `RoomConfigStore`, `StorageProvider`, `LiveKitTokenEndpoint`, `PresenceService`), the `World` interface, and the registries. Interfaces only, with no runtime dependencies. Pure Dart. |
 | [`packages/realm_firebase`](packages/realm_firebase) | `realm_firebase` | Provider plugin: `FirebaseAuthProvider`, `FirestoreRoomConfigStore`, `FirebaseStorageProvider`. A Flutter package. |
-| [`examples/livekit-token-server`](examples/livekit-token-server) | `livekit_token_server` | Server-side reference for the Realm credential (ES256 issue and verify). It imports the engine; the engine never imports it. Production minting runs in [`enspyrco/realm-token-server`](https://github.com/enspyrco/realm-token-server), whose parity test verifies a credential minted by this code. |
+| [`packages/realm_credential`](packages/realm_credential) | `realm_credential` | Server-side reference for the Realm credential (ES256 issue and verify). It imports the engine; the engine never imports it. Production minting runs in [`enspyrco/realm-token-server`](https://github.com/enspyrco/realm-token-server), whose parity test verifies a credential minted by this code. |
 
 More packages are planned on the same pattern (DESIGN.md, "Package shape"): endorsed
 `realm_livekit` and `realm_flame` implementations, and an app-facing `realm` package that
@@ -86,7 +86,7 @@ flutter analyze --fatal-infos                   # covers every member
 
 (cd packages/realm_core && dart test)
 (cd packages/realm_firebase && flutter test)    # Flutter package
-(cd examples/livekit-token-server && dart test)
+(cd packages/realm_credential && dart test)
 ```
 
 Flutter is pinned once, in the root `pubspec.yaml` (`environment: flutter:`). CI reads it, and

@@ -49,7 +49,7 @@ export 'src/world/world.dart';
 
 /// The engine's version, as a value consumers can print.
 ///
-/// Also load-bearing structurally: `examples/livekit-token-server/` imports it
+/// Also load-bearing structurally: `packages/realm_credential/` imports it
 /// to pin the dependency direction — the server depends on the engine, and the
 /// engine never depends on the server. That asymmetry is one of the two
 /// artifacts that keep secret-bearing auth strategies out of the client bundle
