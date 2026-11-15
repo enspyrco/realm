@@ -39,6 +39,51 @@ abstract interface class RoomConfigStore {
   /// [patch] is merged into the existing [RoomDescriptor.worldConfig]. The
   /// engine does not interpret its contents — see [RoomDescriptor.worldConfig].
   Future<void> updateRoomConfig(RoomId roomId, Map<String, Object?> patch);
+
+  /// Applies a partial update to a room's engine-owned metadata.
+  ///
+  /// [worldConfig], if non-empty, is merged into [RoomDescriptor.worldConfig]
+  /// **in the same atomic write** — so a world can save its content and rename
+  /// the room together, with no window where one landed and the other did not.
+  /// It obeys the same opacity rule as [updateRoomConfig].
+  ///
+  /// Editors are not patched here; see [addEditor] / [removeEditor].
+  Future<void> updateRoomMetadata(
+    RoomId roomId,
+    RoomMetadataPatch patch, {
+    Map<String, Object?> worldConfig = const {},
+  });
+
+  /// Grants [editor] edit rights on the room. Granting an existing editor is a
+  /// no-op.
+  Future<void> addEditor(RoomId roomId, UserId editor);
+
+  /// Revokes [editor]'s edit rights on the room. Revoking a non-editor is a
+  /// no-op.
+  Future<void> removeEditor(RoomId roomId, UserId editor);
+
+  /// Deletes the room. Deleting a room that does not exist is not an error.
+  Future<void> deleteRoom(RoomId roomId);
+}
+
+/// A partial update to a room's engine-owned metadata. A `null` field is left
+/// unchanged.
+///
+/// Editors are deliberately absent: an add and a remove are separate grants
+/// with separate authorization, and a backend need not be able to apply both
+/// to one list in one write (Firestore cannot).
+class RoomMetadataPatch {
+  /// Describes a metadata update.
+  const RoomMetadataPatch({this.displayName, this.visibility});
+
+  /// The room's new human-readable name.
+  final String? displayName;
+
+  /// The room's new visibility.
+  ///
+  /// A backend that cannot honour a given level throws [UnsupportedError]
+  /// rather than storing a weaker one.
+  final RoomVisibility? visibility;
 }
 
 /// A room record, as the engine understands one.

@@ -75,7 +75,7 @@ void main() {
     });
   });
 
-  group('visibility mapping (unlisted is the ceiling)', () {
+  group('visibility mapping (unlisted is inexpressible)', () {
     test('public ↔ isPublic true', () async {
       final r = await store.createRoom(spec(visibility: RoomVisibility.public));
       expect((await store.getRoom(r.id))!.visibility, RoomVisibility.public);
@@ -83,19 +83,37 @@ void main() {
       expect(raw.data()!['isPublic'], isTrue);
     });
 
-    test('unlisted ↔ isPublic false', () async {
-      final r =
-          await store.createRoom(spec(visibility: RoomVisibility.unlisted));
-      expect((await store.getRoom(r.id))!.visibility, RoomVisibility.unlisted);
+    test('private ↔ isPublic false', () async {
+      final r = await store.createRoom(spec(visibility: RoomVisibility.private));
+      expect((await store.getRoom(r.id))!.visibility, RoomVisibility.private);
       final raw = await firestore.collection('rooms').doc(r.id.value).get();
       expect(raw.data()!['isPublic'], isFalse);
     });
 
-    test('private is refused — the backend cannot honor it', () {
+    test("NewRoomSpec's default visibility (private) is creatable", () async {
+      final r = await store.createRoom(NewRoomSpec(
+        displayName: 'Default',
+        worldType: WorldTypeId.parse('tech_world', registry),
+        ownerId: const UserId('owner-1'),
+      ));
+      expect((await store.getRoom(r.id))!.visibility, RoomVisibility.private);
+    });
+
+    test('unlisted is refused — the rules cannot honor it', () {
       expect(
-        () => store.createRoom(spec(visibility: RoomVisibility.private)),
+        () => store.createRoom(spec(visibility: RoomVisibility.unlisted)),
         throwsUnsupportedError,
       );
+    });
+
+    test('legacy isPublic:false doc reads as private', () async {
+      final ref = await firestore.collection('rooms').add({
+        'name': 'Legacy private',
+        'ownerId': 'owner-1',
+        'isPublic': false,
+      });
+      final fetched = await store.getRoom(RoomId(ref.id));
+      expect(fetched!.visibility, RoomVisibility.private);
     });
 
     test('legacy doc missing isPublic defaults to public', () async {
@@ -144,7 +162,7 @@ void main() {
     setUp(() async {
       await store.createRoom(spec(name: 'Pub', visibility: RoomVisibility.public));
       await store
-          .createRoom(spec(name: 'Unl', visibility: RoomVisibility.unlisted));
+          .createRoom(spec(name: 'Priv', visibility: RoomVisibility.private));
     });
 
     test('no filter returns every room', () async {
@@ -157,9 +175,15 @@ void main() {
       expect(rooms.map((r) => r.displayName), ['Pub']);
     });
 
-    test('minVisibility unlisted returns public + unlisted (all)', () async {
+    test('minVisibility unlisted excludes private (filters on isPublic)',
+        () async {
       final rooms =
           await store.listRooms(minVisibility: RoomVisibility.unlisted);
+      expect(rooms.map((r) => r.displayName), ['Pub']);
+    });
+
+    test('minVisibility private returns every room', () async {
+      final rooms = await store.listRooms(minVisibility: RoomVisibility.private);
       expect(rooms, hasLength(2));
     });
 
@@ -173,7 +197,7 @@ void main() {
       addTearDown(() => firestore.collection('rooms').doc(ref.id).delete());
       final mine = await store.listRooms(ownedBy: const UserId('owner-1'));
       expect(mine.every((r) => r.ownerId.value == 'owner-1'), isTrue);
-      expect(mine.map((r) => r.displayName), containsAll(['Pub', 'Unl']));
+      expect(mine.map((r) => r.displayName), containsAll(['Pub', 'Priv']));
     });
   });
 
@@ -195,6 +219,117 @@ void main() {
         () => store.updateRoomConfig(r.id, {'name': 'sneaky rename'}),
         throwsArgumentError,
       );
+    });
+  });
+
+  group('updateRoomMetadata', () {
+    Future<Map<String, dynamic>> raw(RoomId id) async =>
+        (await firestore.collection('rooms').doc(id.value).get()).data()!;
+
+    test('renames the room', () async {
+      final r = await store.createRoom(spec());
+      await store.updateRoomMetadata(
+          r.id, const RoomMetadataPatch(displayName: 'Renamed'));
+      expect((await store.getRoom(r.id))!.displayName, 'Renamed');
+    });
+
+    test('changes visibility both ways', () async {
+      final r = await store.createRoom(spec(visibility: RoomVisibility.public));
+      await store.updateRoomMetadata(
+          r.id, const RoomMetadataPatch(visibility: RoomVisibility.private));
+      expect((await raw(r.id))['isPublic'], isFalse);
+      await store.updateRoomMetadata(
+          r.id, const RoomMetadataPatch(visibility: RoomVisibility.public));
+      expect((await store.getRoom(r.id))!.visibility, RoomVisibility.public);
+    });
+
+    test('null fields are left unchanged', () async {
+      final r = await store.createRoom(spec(visibility: RoomVisibility.public));
+      await store.updateRoomMetadata(
+          r.id, const RoomMetadataPatch(displayName: 'Only name'));
+      final fetched = await store.getRoom(r.id);
+      expect(fetched!.displayName, 'Only name');
+      expect(fetched.visibility, RoomVisibility.public);
+    });
+
+    test('renames and patches worldConfig together', () async {
+      final r = await store.createRoom(spec(worldConfig: {
+        'mapData': {'v': 1},
+        'mapVersion': 'v1',
+      }));
+      await store.updateRoomMetadata(
+        r.id,
+        const RoomMetadataPatch(displayName: 'Saved'),
+        worldConfig: {
+          'mapData': {'v': 2},
+        },
+      );
+      final fetched = await store.getRoom(r.id);
+      expect(fetched!.displayName, 'Saved');
+      expect(fetched.worldConfig['mapData'], {'v': 2});
+      expect(fetched.worldConfig['mapVersion'], 'v1'); // merged, not replaced
+    });
+
+    test('unlisted is refused and nothing is written', () async {
+      final r = await store.createRoom(spec());
+      await expectLater(
+        store.updateRoomMetadata(
+          r.id,
+          const RoomMetadataPatch(
+            displayName: 'Should not land',
+            visibility: RoomVisibility.unlisted,
+          ),
+        ),
+        throwsUnsupportedError,
+      );
+      expect((await store.getRoom(r.id))!.displayName, 'Imagination Center');
+    });
+
+    test('worldConfig touching an engine key is rejected', () async {
+      final r = await store.createRoom(spec());
+      await expectLater(
+        store.updateRoomMetadata(r.id, const RoomMetadataPatch(),
+            worldConfig: {'editorIds': <String>['sneaky']}),
+        throwsArgumentError,
+      );
+      expect((await store.getRoom(r.id))!.editorIds, isEmpty);
+    });
+  });
+
+  group('editors', () {
+    test('addEditor grants, idempotently', () async {
+      final r = await store.createRoom(spec());
+      await store.addEditor(r.id, const UserId('ed-1'));
+      await store.addEditor(r.id, const UserId('ed-1'));
+      expect((await store.getRoom(r.id))!.editorIds.map((e) => e.value),
+          ['ed-1']);
+    });
+
+    test('removeEditor revokes only that editor', () async {
+      final r = await store.createRoom(
+          spec(editorIds: const [UserId('ed-1'), UserId('ed-2')]));
+      await store.removeEditor(r.id, const UserId('ed-1'));
+      expect((await store.getRoom(r.id))!.editorIds.map((e) => e.value),
+          ['ed-2']);
+    });
+
+    test('removing a non-editor is a no-op', () async {
+      final r = await store.createRoom(spec(editorIds: const [UserId('ed-1')]));
+      await store.removeEditor(r.id, const UserId('stranger'));
+      expect((await store.getRoom(r.id))!.editorIds.map((e) => e.value),
+          ['ed-1']);
+    });
+  });
+
+  group('deleteRoom', () {
+    test('deletes the room', () async {
+      final r = await store.createRoom(spec());
+      await store.deleteRoom(r.id);
+      expect(await store.getRoom(r.id), isNull);
+    });
+
+    test('deleting a missing room is not an error', () async {
+      await store.deleteRoom(const RoomId('nope'));
     });
   });
 

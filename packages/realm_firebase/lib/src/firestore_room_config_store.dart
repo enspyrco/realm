@@ -18,22 +18,26 @@ import 'package:realm_core/realm_core.dart';
 /// interpretation, so a tilemap (`mapData`), a `mapVersion`, or any future
 /// world-authored key rides along and this plugin never depends on `tech_world`.
 ///
-/// ## Visibility: `unlisted` is this backend's ceiling
+/// ## Visibility: `unlisted` is the level this backend cannot express
 ///
 /// The engine's [RoomVisibility] is three-state, but the live schema stores a
-/// two-state `isPublic` bool that controls *listing only*, not
-/// reachability-by-id. The honest mapping is therefore `true ↔ public`,
-/// `false ↔ unlisted`. **[RoomVisibility.private] is deliberately unsupported
-/// here**: this backend cannot gate reachability without a Firestore
-/// security-rules change, and returning or accepting `private` while anyone
-/// holding the id can still join would make the interface lie. [createRoom]
-/// throws on `private` rather than silently downgrading it.
+/// two-state `isPublic` bool. The deployed security rules let a room document
+/// be read only when `isPublic == true` or the caller is its owner or an
+/// editor — so `isPublic: false` gates *reachability*, not just listing:
+/// holding the id is not enough to load the room. That is
+/// [RoomVisibility.private] (owner and editors are the explicit grant). The
+/// mapping is therefore `true ↔ public`, `false ↔ private`.
+/// **[RoomVisibility.unlisted] is deliberately unsupported here**: honouring
+/// it needs a rule letting anyone holding the id read the document, and
+/// accepting it while the rules deny that would make the interface lie. Writes
+/// of `unlisted` throw rather than silently tightening to `private`.
 ///
 /// ## `getRoom` is a pure read
 ///
 /// Unlike `tech_world`'s `RoomData.fromFirestore` (which self-heals renames and
 /// wall styles by *writing during the read*), this store never writes during a
-/// read. Those migrations relocate to the step-5 metadata-update door.
+/// read. A caller that wants those migrations performs them explicitly through
+/// [updateRoomMetadata] / [updateRoomConfig].
 class FirestoreRoomConfigStore implements RoomConfigStore {
   /// Creates a store over [collection] (defaults to the `rooms` collection).
   ///
@@ -76,13 +80,14 @@ class FirestoreRoomConfigStore implements RoomConfigStore {
     if (ownedBy != null) {
       query = query.where('ownerId', isEqualTo: ownedBy.value);
     }
-    // Two-state backend: only `public` (rank 3) is expressible as a filter
-    // (`isPublic == true`). `unlisted` (rank 2) means public + unlisted = every
-    // room, so it needs no filter; `private` cannot exist in this backend.
-    // Per-caller authorization (who may see a given room) is enforced by
-    // Firestore security rules server-side, not re-implemented here.
+    // Two-state backend (public / private; unlisted cannot exist), so any
+    // threshold above private selects exactly the public rooms. Only
+    // `minVisibility: private` (or null) leaves the query unfiltered — and
+    // Firestore rejects a whole query that could return a document the caller
+    // may not read, so an unfiltered, un-owner-scoped list is permission-denied
+    // for anyone but an admin. Authorization stays in the security rules.
     if (minVisibility != null &&
-        minVisibility.isAtLeast(RoomVisibility.public)) {
+        minVisibility.isAtLeast(RoomVisibility.unlisted)) {
       query = query.where('isPublic', isEqualTo: true);
     }
     final snap = await query.get();
@@ -132,32 +137,69 @@ class FirestoreRoomConfigStore implements RoomConfigStore {
     RoomId roomId,
     Map<String, Object?> patch,
   ) async {
-    // This door patches `worldConfig` ONLY. A patch key that collides with an
-    // engine-metadata field would smuggle a rename/visibility/owner change
-    // through the config door — exactly what the step-5 metadata door is for.
-    final collisions = patch.keys.where(_engineKeys.contains).toList();
-    if (collisions.isNotEmpty) {
-      throw ArgumentError.value(
-        collisions,
-        'patch',
-        'updateRoomConfig patches worldConfig only; these engine-owned '
-            'metadata keys must go through the step-5 metadata-update door',
-      );
-    }
+    _rejectEngineKeys(patch, 'patch');
     await _collection.doc(roomId.value).update({
       ...patch,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
+  @override
+  Future<void> updateRoomMetadata(
+    RoomId roomId,
+    RoomMetadataPatch patch, {
+    Map<String, Object?> worldConfig = const {},
+  }) async {
+    _rejectEngineKeys(worldConfig, 'worldConfig');
+    await _collection.doc(roomId.value).update({
+      ...worldConfig,
+      if (patch.displayName case final name?) 'name': name,
+      if (patch.visibility case final v?) 'isPublic': _isPublicFor(v),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
+  Future<void> addEditor(RoomId roomId, UserId editor) =>
+      _collection.doc(roomId.value).update({
+        'editorIds': FieldValue.arrayUnion([editor.value]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+  @override
+  Future<void> removeEditor(RoomId roomId, UserId editor) =>
+      _collection.doc(roomId.value).update({
+        'editorIds': FieldValue.arrayRemove([editor.value]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+  @override
+  Future<void> deleteRoom(RoomId roomId) =>
+      _collection.doc(roomId.value).delete();
+
+  /// A worldConfig key colliding with an engine-metadata field would smuggle a
+  /// rename/visibility/owner change past the metadata door's typed fields.
+  void _rejectEngineKeys(Map<String, Object?> config, String name) {
+    final collisions = config.keys.where(_engineKeys.contains).toList();
+    if (collisions.isNotEmpty) {
+      throw ArgumentError.value(
+        collisions,
+        name,
+        'worldConfig is opaque world data; these engine-owned metadata keys '
+            'must go through updateRoomMetadata / addEditor / removeEditor',
+      );
+    }
+  }
+
   bool _isPublicFor(RoomVisibility v) => switch (v) {
         RoomVisibility.public => true,
-        RoomVisibility.unlisted => false,
-        RoomVisibility.private => throw UnsupportedError(
-            'FirestoreRoomConfigStore does not support RoomVisibility.private: '
-            'the Firestore backend cannot gate reachability-by-id without a '
-            'security-rules change. Use unlisted, or add rules enforcement '
-            'first (step-5 metadata door).',
+        RoomVisibility.private => false,
+        RoomVisibility.unlisted => throw UnsupportedError(
+            'FirestoreRoomConfigStore does not support RoomVisibility.unlisted: '
+            'the security rules deny reading an isPublic:false room to anyone '
+            'but its owner and editors, so "reachable by anyone holding the id" '
+            'cannot be honoured. Use public or private, or change the rules '
+            'first.',
           ),
       };
 
@@ -178,7 +220,7 @@ class FirestoreRoomConfigStore implements RoomConfigStore {
       ),
       visibility: (data['isPublic'] as bool? ?? true)
           ? RoomVisibility.public
-          : RoomVisibility.unlisted,
+          : RoomVisibility.private,
       ownerId: UserId(data['ownerId'] as String),
       ownerDisplayName: data['ownerDisplayName'] as String?,
       editorIds: (data['editorIds'] as List<dynamic>?)
