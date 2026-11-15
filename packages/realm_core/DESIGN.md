@@ -34,6 +34,18 @@ This document is the architectural pin. It must be cage-matched before any extra
   `retrieveLiveKitToken` Cloud Function fallback was removed and the deployed functions retired
   (2026-10-25/27, zero production callers across the 30-day log window). Still on direct Firebase:
   `AuthService` callers, Firestore room reads, `firebase_storage` calls.
+  **2026-11-15: `RoomConfigStore` gained its metadata door** (prerequisite for moving
+  tech_world's `RoomService` onto it). Shaped from tech_world's production callers at
+  `8ca6f37`: the only rename ships *with* a map save as one atomic write
+  (`updateRoomMapAndName`, `lib/main.dart`), so `updateRoomMetadata` carries an optional
+  `worldConfig` patch in the same write; editor add/remove (`manage_editors_dialog.dart`)
+  are separate methods, since Firestore cannot `arrayUnion` and `arrayRemove` one field in
+  one write; `deleteRoom` (two callers) was missing too. `updateRoomName` and `setPublic`
+  had no production callers. **Visibility mapping corrected in the same PR:** step 4 mapped
+  `isPublic: false ↔ unlisted`, but tech_world's `firestore.rules` let only the owner and
+  editors read an `isPublic: false` room, which is `private`. `FirestoreRoomConfigStore`
+  now maps `false ↔ private` and refuses `unlisted`; the stored bool is unchanged, so
+  tech_world's current reader is unaffected.
 - **Repo split (Phase 2 of "Repo structure", brought forward): done 2026-10-27.**
   `packages/realm`, `packages/realm_firebase` and `packages/realm_credential` moved from
   `enspyrco/tech_world` to this repo with their history (`git filter-repo`; all three subtree
@@ -123,7 +135,9 @@ PR; tracked here so they're addressed at the right step rather than lost:
   that shouldn't exist. Close when federation lands (an engine-owned leave factory that only
   mints `userLeft`/`disconnect` in v1), or accept it here (Tesla).
 
-- **`RoomConfigStore` has no metadata-update door.** `updateRoomConfig` patches only
+- ~~**`RoomConfigStore` has no metadata-update door.**~~ *(Closed 2026-11-15, issue #12:
+  `updateRoomMetadata` + `addEditor`/`removeEditor` + `deleteRoom`, shaped from tech_world's
+  production callers — see Migration progress, step 5.)* `updateRoomConfig` patches only
   `worldConfig`; there is no contract method to rename a room, change its `visibility`,
   or edit `editorIds` — all of which the real `RoomService` does (`updateRoomName`,
   `setPublic`, `addEditor`/`removeEditor`). Step 5 must either add an explicit metadata-update
@@ -402,6 +416,23 @@ abstract interface class RoomConfigStore {
   Stream<RoomDescriptor> watchRoom(RoomId roomId);
   Future<RoomDescriptor> createRoom(NewRoomSpec spec);
   Future<void> updateRoomConfig(RoomId roomId, Map<String, Object?> patch);
+  // Metadata door (step 5). worldConfig rides in the same atomic write, so a
+  // world can save content + rename together (tech_world's save path does).
+  Future<void> updateRoomMetadata(
+    RoomId roomId,
+    RoomMetadataPatch patch, {
+    Map<String, Object?> worldConfig = const {},
+  });
+  Future<void> addEditor(RoomId roomId, UserId editor);
+  Future<void> removeEditor(RoomId roomId, UserId editor);
+  Future<void> deleteRoom(RoomId roomId);
+}
+
+class RoomMetadataPatch {
+  final String? displayName;           // null = unchanged
+  final RoomVisibility? visibility;    // null = unchanged; unsupported level throws
+  // No editor field: add/remove are separate grants, and Firestore cannot
+  // arrayUnion + arrayRemove one field in one write.
 }
 
 class RoomDescriptor {
