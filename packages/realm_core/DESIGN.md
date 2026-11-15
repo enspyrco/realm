@@ -21,7 +21,7 @@ This document is the architectural pin. It must be cage-matched before any extra
 - **Step 1 (design + cage-match): done.** This doc, 6-round cage-matched, merged.
 - **Step 2 (workspace scaffold): done.** Merged as PR #520 — root became a Dart/Flutter
   pub workspace with three empty members (`packages/realm`, `packages/realm_firebase`,
-  `packages/realm_credential`).
+  `examples/livekit-token-server` (now `packages/realm_credential`)).
 - **Step 3 (engine interfaces): done.** Merged as PR #521 — the five interfaces + `World`
   + the two registries live in `packages/realm/lib/src/`, exported from `realm.dart`. CI
   iterates workspace members (root `flutter test` does not descend into them).
